@@ -379,6 +379,31 @@
     margin-top: 6px; padding: 0 4px;
     line-height: 1.5; opacity: .7;
   }
+
+  /* 공지 확인 팝업 */
+  .notice-confirm-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.7);
+    z-index: 9100; display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity .2s;
+  }
+  .notice-confirm-overlay.show { opacity: 1; pointer-events: all; }
+  .notice-confirm-modal {
+    background: var(--card); border: 1px solid var(--sky-border);
+    border-radius: 16px; padding: 24px 20px;
+    width: min(360px, 90vw);
+    display: flex; flex-direction: column; gap: 16px;
+    box-shadow: 0 12px 40px rgba(0,0,0,.6);
+    transform: scale(.92); transition: transform .25s cubic-bezier(.34,1.56,.64,1);
+  }
+  .notice-confirm-overlay.show .notice-confirm-modal { transform: scale(1); }
+  .notice-confirm-title { font-size: 1rem; font-weight: 700; color: var(--sky); }
+  .notice-confirm-title-jp { font-size: .78rem; color: var(--text-secondary); margin-top: 2px; }
+  .notice-confirm-preview {
+    background: var(--elevated); border-radius: 8px; padding: 12px;
+    font-size: .88rem; color: var(--text); line-height: 1.5;
+    border-left: 3px solid var(--sky); word-break: break-all;
+  }
+  .notice-confirm-btns { display: flex; gap: 8px; }
 </style>
 </head>
 <body>
@@ -480,6 +505,21 @@
 
 <div class="toast" id="toast"></div>
 
+
+<!-- 공지 확인 팝업 -->
+<div class="notice-confirm-overlay" id="noticeConfirmOverlay">
+  <div class="notice-confirm-modal">
+    <div>
+      <div class="notice-confirm-title">📢 공지를 발송하시겠어요?</div>
+      <div class="notice-confirm-title-jp">お知らせを送信しますか？</div>
+    </div>
+    <div class="notice-confirm-preview" id="noticeConfirmMsg"></div>
+    <div class="notice-confirm-btns">
+      <button class="pino-btn cancel" id="noticeConfirmCancel">취소 / キャンセル</button>
+      <button class="pino-btn send" id="noticeConfirmSend">발송 / 送信</button>
+    </div>
+  </div>
+</div>
 <!-- 피노 메세지 팝업 -->
 <div class="pino-overlay" id="pinoOverlay">
   <div class="pino-modal">
@@ -495,6 +535,21 @@
   </div>
 </div>
 
+
+<!-- 공지 확인 팝업 -->
+<div class="notice-confirm-overlay" id="noticeConfirmOverlay">
+  <div class="notice-confirm-modal">
+    <div>
+      <div class="notice-confirm-title">📢 공지를 발송하시겠어요?</div>
+      <div class="notice-confirm-title-jp">お知らせを送信しますか？</div>
+    </div>
+    <div class="notice-confirm-preview" id="noticeConfirmMsg"></div>
+    <div class="notice-confirm-btns">
+      <button class="pino-btn cancel" id="noticeConfirmCancel">취소 / キャンセル</button>
+      <button class="pino-btn send" id="noticeConfirmSend">발송 / 送信</button>
+    </div>
+  </div>
+</div>
 <!-- 피노 메세지 팝업 -->
 <div class="pino-overlay" id="pinoOverlay">
   <div class="pino-modal">
@@ -796,12 +851,26 @@ function onPressStart(e) {
   if (!name) return;
   longPressTimer = setTimeout(function() { enterPinoMode(); }, 1500);
 }
+function isMaster() {
+  const n = (document.getElementById('nameInput').value || '').trim();
+  return n === '운영자' || n === 'master';
+}
+
 function onPressEnd(e) {
   if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
   if (isPinoMode) {
-    document.getElementById('pinoMsgInput').value = '';
+    const input = document.getElementById('pinoMsgInput');
+    input.value = '';
+    // 운영자면 100글자, 일반은 20글자
+    if (isMaster()) {
+      input.maxLength = 100;
+      input.placeholder = '공지 메세지 (최대 100글자) / お知らせメッセージ（最大100文字）';
+    } else {
+      input.maxLength = 20;
+      input.placeholder = '최대 20글자 / 最大20文字';
+    }
     document.getElementById('pinoOverlay').classList.add('show');
-    setTimeout(function(){ document.getElementById('pinoMsgInput').focus(); }, 300);
+    setTimeout(function(){ input.focus(); }, 300);
     return;
   }
   sendPizza();
@@ -821,19 +890,43 @@ document.getElementById('pinoCancelBtn').addEventListener('click', function() {
 let lastPinoAt = 0;
 document.getElementById('pinoSendBtn').addEventListener('click', function() {
   const now = Date.now();
+  const msg = document.getElementById('pinoMsgInput').value.trim();
+  const name = (document.getElementById('nameInput').value || '').trim();
+  if (!msg) return;
+
+  if (isMaster()) {
+    // 운영자: 확인 팝업
+    document.getElementById('pinoOverlay').classList.remove('show');
+    document.getElementById('noticeConfirmMsg').textContent = msg;
+    document.getElementById('noticeConfirmOverlay').classList.add('show');
+    return;
+  }
+
   if (now - lastPinoAt < 30000) {
     const remain = Math.ceil((30000 - (now - lastPinoAt)) / 1000);
     showToast('⏳ ' + remain + '초 후에 다시 보낼 수 있어요 / ' + remain + '秒後にまた送れます', 'err');
     return;
   }
-  const msg = document.getElementById('pinoMsgInput').value.trim();
-  const name = (document.getElementById('nameInput').value || '').trim();
-  if (!msg) return;
   lastPinoAt = now;
   db.ref('pinoSignal').push({ msg: msg, name: name, xAvatar: getXAvatarUrl(), at: Date.now() });
   document.getElementById('pinoOverlay').classList.remove('show');
   exitPinoMode();
   showToast('🍫 피노 발사! / ピノ発射!', 'ok');
+});
+
+// 공지 확인 팝업 버튼
+document.getElementById('noticeConfirmSend').addEventListener('click', function() {
+  const msg = document.getElementById('noticeConfirmMsg').textContent;
+  const name = (document.getElementById('nameInput').value || '').trim();
+  db.ref('noticeSignal').push({ msg: msg, name: name, at: Date.now() });
+  document.getElementById('noticeConfirmOverlay').classList.remove('show');
+  exitPinoMode();
+  showToast('📢 공지 발송 완료! / お知らせ送信完了!', 'ok');
+});
+document.getElementById('noticeConfirmCancel').addEventListener('click', function() {
+  document.getElementById('noticeConfirmOverlay').classList.remove('show');
+  // 다시 피노 모달 열기
+  document.getElementById('pinoOverlay').classList.add('show');
 });
 
 let lastPizzaAt = 0;
@@ -847,7 +940,7 @@ function sendPizza() {
   void btn.offsetWidth;
   btn.classList.add('boom');
   const name = (document.getElementById('nameInput').value || '').trim();
-  if (name === '운영자') {
+  if (name === '운영자' || name === 'master') {
     db.ref('skipSignal').push({ at: Date.now() });
     showToast('⏭️ 다음 곡으로 스킵!', 'ok');
     return;
