@@ -677,7 +677,8 @@ window.onYouTubeIframeAPIReady = function() {
     }
   });
   if (pendingVideoId) {
-    ytPlayer.loadVideoById(pendingVideoId);
+    const { videoId, startedAt } = typeof pendingVideoId === 'object' ? pendingVideoId : { videoId: pendingVideoId, startedAt: null };
+    loadVideo(videoId, startedAt);
     pendingVideoId = null;
   }
 };
@@ -710,13 +711,19 @@ function onYTError(e) {
   }
 }
 
-function loadVideo(videoId) {
+function loadVideo(videoId, startedAt) {
   if (!ytReady || !ytPlayer) {
-    pendingVideoId = videoId;
+    pendingVideoId = { videoId, startedAt };
     return;
   }
   if (videoId) {
-    ytPlayer.loadVideoById(videoId);
+    if (startedAt) {
+      const elapsed = (Date.now() - startedAt) / 1000; // ms → 초 (소수점 포함)
+      const seekSec = Math.max(0, elapsed);
+      ytPlayer.loadVideoById({ videoId: videoId, startSeconds: seekSec });
+    } else {
+      ytPlayer.loadVideoById(videoId);
+    }
   } else {
     ytPlayer.stopVideo();
   }
@@ -756,7 +763,7 @@ function renderPlayer() {
 
   if (current) {
     ph.style.display = 'none';
-    loadVideo(current.videoId);
+    loadVideo(current.videoId, current.startedAt || null);
   } else {
     ph.style.display = '';
     if (ytReady && ytPlayer) ytPlayer.stopVideo();
@@ -779,7 +786,7 @@ function playNext() {
       bgModeRef.set(false); // 배경 모드 종료
       currentRef.set({videoId:item.videoId, title:item.title, thumbnail:item.thumbnail,
                       requester:item.requester, duration:item.duration||'',
-                      xAvatar:item.xAvatar||''});
+                      xAvatar:item.xAvatar||'', startedAt:Date.now()});
       queueRef.child(targetKey).remove();
       nextKeyRef.set(null);
       return;
@@ -850,7 +857,8 @@ function playBgCurrent() {
     thumbnail: track.thumbnail,
     requester: '🎵 taiikukan time!',
     duration: '',
-    _bg: true   // 배경 재생 플래그
+    _bg: true,
+    startedAt: Date.now()
   });
 }
 
