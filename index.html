@@ -698,10 +698,12 @@ function renderPlayer() {
   const isBg = current?._bg === true;
 
   document.getElementById('npTitle').textContent = current ? current.title : '대기 중... / 待機中...';
-  document.getElementById('npLabel').textContent = isBg
+  const npLabelEl = document.getElementById('npLabel');
+  if (npLabelEl) npLabelEl.textContent = isBg
     ? '🎵 taiikukan time! / 自動再生中'
     : '▶ Now Playing / 再生中';
-  document.getElementById('npReq').innerHTML = current
+  const npReqEl = document.getElementById('npReq');
+  if (npReqEl) npReqEl.innerHTML = current
     ? (isBg
         ? `<span style="color:var(--sky);font-size:.75rem;">대기열이 비어 자동 재생 중입니다 / キューが空のため自動再生中</span>`
         : `신청자 / リクエスト者: <span>${esc(current.requester)}</span>`)
