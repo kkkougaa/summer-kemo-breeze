@@ -557,29 +557,16 @@ const queueRef = db.ref('queue');
 const currentRef = db.ref('current');
 const nextKeyRef = db.ref('nextKey');
 const bgModeRef  = db.ref('bgMode'); // 배경 플레이리스트 재생 중 여부
-
-// Visualizer
-const vis = document.getElementById('vis');
-for(let i=0;i<8;i++){
-  const b=document.createElement('div'); b.className='vbar';
-  b.style.setProperty('--max-h',(Math.random()*16+4)+'px');
-  b.style.setProperty('--dur',(0.35+Math.random()*0.55).toFixed(2)+'s');
-  b.style.animationDelay=(Math.random()*0.4).toFixed(2)+'s';
-  vis.appendChild(b);
-}
-
-// Connection
-db.ref('.info/connected').on('value', s => {
-  const on = s.val();
-  ['connDot','connDot2'].forEach(id => document.getElementById(id).classList.toggle('off',!on));
-  document.getElementById('connText').textContent = on ? '연결됨 / 接続済み' : '연결 끊김 / 切断';
-});
-
 let queue=[], current=null, nextKey=null;
-let bgMode = false;          // 배경 플레이리스트 재생 중?
-let bgPlaylist = [];         // fetch된 플레이리스트 영상 목록
-let bgIndex = 0;             // 현재 bg 재생 인덱스
-let bgLoading = false;       // 플레이리스트 로딩 중 중복 방지
+let bgMode = false;
+let bgPlaylist = [], bgIndex = 0, bgLoading = false;
+
+// Visualizer 비활성화
+
+// Connection (UI 제거됨, Firebase 연결만 유지)
+db.ref('.info/connected').on('value', s => { /* 연결 상태 모니터링 */ });
+
+// 변수 선언 위로 이동됨
 
 // 🔔 신곡 추가 토스트
 let queueToastInit = false;
